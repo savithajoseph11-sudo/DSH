@@ -490,9 +490,19 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
             // settlement drains logWork so every settle event is still appended
             // inside the open turn (shapeDispatchLog is contained, so this
             // chain cannot reject).
-            resolve(result.isError
-              ? { isError: true, message: result.error.message }
-              : { isError: false, value: result.value })
+            // Schema-validation rejections (`INVALID_ARGS`) carry no tool
+            // name, so a program-side failure reads as an anonymous error and
+            // neither the program nor the model that wrote it can locate the
+            // call to repair — prefix those with the binding. Named tool
+            // failures keep their exact message (programs assert on it).
+            if (result.isError) {
+              const message = result.error.info?.code === 'INVALID_ARGS'
+                ? `tools.${name}: ${result.error.message}`
+                : result.error.message
+              resolve({ isError: true, message })
+            } else {
+              resolve({ isError: false, value: result.value })
+            }
             const agent = exec.agent
             if (agent === undefined) return
             const task: Promise<void> = (async () => {

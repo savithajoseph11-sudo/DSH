@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, ToolCallId  } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
@@ -964,6 +965,32 @@ describe('the run_code dispatch bridge', () => {
     }
     const result = await runCode(ctx, 'program')
     expect(result.content[0]).toEqual({ type: 'text', text: 'caught: deliberate failure' })
+  })
+
+  it('names the failing binding when a schema-validation rejection reaches the program', async () => {
+    // INVALID_ARGS rejections carry no tool name; without the prefix the
+    // program sees an anonymous "invalid arguments: ..." and cannot locate
+    // the call that omitted a required property (the dominant run_code
+    // repair loop failure).
+    const { ctx, runtime } = await setup({ mode: 'ptc' })
+    ctx.tools.register(defineContentToolFixture({
+      name: 'strict',
+      description: 'Requires a value.',
+      parameters: { value: { type: 'string', required: true } },
+      execute(args): Promise<ContentBlock[]> {
+        return Promise.resolve([{ type: 'text', text: args.value }])
+      },
+    }))
+    runtime.behavior = async (request) => {
+      try {
+        await request.bindings[0]!.functions.strict!({})
+        return { logs: [], value: 'unreachable' }
+      } catch (error: unknown) {
+        return { logs: [], value: `caught: ${error instanceof Error ? error.message : String(error)}` }
+      }
+    }
+    const result = await runCode(ctx, 'program')
+    expect(result.content[0]).toEqual({ type: 'text', text: 'caught: tools.strict: invalid arguments: missing required property "value"' })
   })
 
   it('a throwing tools/ptc-dispatch-log listener is contained: the original settled content is logged', async () => {

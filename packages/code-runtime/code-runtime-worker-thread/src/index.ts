@@ -305,7 +305,13 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
       // A program that does not survive the type-strip (syntax error,
       // non-erasable syntax like `enum`) is a program failure, reported the
       // same way a thrown exception would be — and no worker ever spawns.
-      return this.failureBeforeWorker({ kind: 'exception', message: messageOf(error) })
+      // The raw parser diagnostic alone ("Expected ',', got '<eof>'") does not
+      // tell the model the failure happened before execution or what to fix,
+      // so every failure keeps the original text and adds the fixed
+      // execution-order note plus the two causes that dominate in practice.
+      const raw = messageOf(error)
+      const hint = ' (the program failed the type-strip parse before execution — likely an unterminated string literal or truncated code; check \\n and quote escaping in multi-line string literals, or non-erasable TypeScript syntax such as enum)'
+      return this.failureBeforeWorker({ kind: 'exception', message: `${raw}${hint}` })
     }
 
     return await this.execute(request, code, bindings)
