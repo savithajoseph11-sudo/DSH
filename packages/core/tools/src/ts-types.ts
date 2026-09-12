@@ -254,7 +254,7 @@ const SDK_INSTRUCTIONS = `## Writing code for run_code
 const SDK_PROGRAM_INSTRUCTIONS = `Inside the program:
 
 - Call tools as \`await tools.name(args)\` — quoted access for exotic names: \`tools["my-tool"](args)\`. Every call resolves to the tool's typed canonical JSON value. Tool arguments must be lossless JSON.
-- Keep multi-line or quote-heavy file content out of string literals inside the program — escaped newlines and quotes are the top cause of pre-execution parse failures ("Expected ',', got '<eof>'"). Write such content with the native \`write\`/\`edit\` tools or pass it via an escaped single-line string instead.
+- Multi-line text inside the program belongs in template literals (\`backticks\`), not double-quoted strings: raw newlines and Python-style triple quotes inside "..." fail the pre-execution parse. Bulk file content goes in a native \`write\`/\`edit\` call, not a literal.
 - A FAILED tool call rejects with \`ToolCallError\`, whose \`toolName\` identifies the failed tool and whose \`message\` is human-readable — \`try/catch\` it to handle and continue.
 - Independent read-only calls MAY overlap under \`Promise.all\` (safe calls run concurrently; mutating calls run alone, in submission order). Sequence dependent work with \`await\`.
 - Emit results with \`return\` and/or \`console.log(...)\`. Only what you print or return is program output. A successful tool result containing an image is attached after the run so you can inspect it on the next step; every other intermediate result stays out of the conversation, so extract just what you need.
