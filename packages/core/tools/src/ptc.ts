@@ -91,8 +91,9 @@ const RUN_CODE_FLAVORS: Record<string, RunCodeFlavor> = {
  * can never drift.
  */
 const RUN_CODE_DESCRIPTION_PARAM_DESCRIPTION
-  = 'Clear, concise description of what this program does in active voice, '
-    + '5-10 words (shown in the UI). Examples: "Count TODO markers across packages"; '
+  = 'REQUIRED on every call, together with `code` — omitting it rejects the call. '
+    + 'A clear, concise description of what this program does in active voice, 5-10 words '
+    + '(shown in the UI). Examples: "Count TODO markers across packages"; '
     + '"Read failing test and its fixture"; "Rename config key in every cordis.yml".'
 
 /**
