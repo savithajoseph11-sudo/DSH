@@ -83,6 +83,29 @@ const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
  */
 const STRIP_WRAP = { prefix: 'async function __dsh_program__() {\n', suffix: '\n}' } as const
 
+/**
+ * A strip failure's `message` carries no position, but V8 puts a code frame
+ * at the head of the `stack` (`:<wrapped line>`, context lines, a caret under
+ * the offending span). Surfacing the caret line and adjusting the line number
+ * for the one-line wrapper prefix turns "Expected a semicolon" from a guess
+ * into a pointed fix. Any other error shape returns '' and the message stays
+ * exactly what it was.
+ */
+function stripFrameOf(error: unknown): string {
+  if ((error as { code?: unknown }).code !== 'ERR_INVALID_TYPESCRIPT_SYNTAX') return ''
+  const stack = (error as { stack?: string }).stack ?? ''
+  const header = /^.*?:(\d+)\n/.exec(stack)
+  if (!header) return ''
+  const frameEnd = stack.indexOf('\n\n')
+  const frame = stack.slice(header[0].length, frameEnd > 0 ? frameEnd : undefined)
+    .split('\n')
+    .filter(line => !line.includes('__dsh_program__'))
+  const caret = frame.findIndex(line => /^\s*\^/.test(line))
+  const shown = (caret > 0 ? frame.slice(caret - 1, caret + 1) : frame.slice(0, 2)).join('\n').slice(0, 400)
+  if (shown.length === 0) return ''
+  return `\n  program line ${Math.max(1, Number(header[1]) - 1)}:\n${shown}`
+}
+
 /** One in-flight run's host-side state, tracked for disposal. */
 interface LiveRun {
   worker: Worker
@@ -311,7 +334,7 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
       // execution-order note plus the two causes that dominate in practice.
       const raw = messageOf(error)
       const hint = ' (the program failed the type-strip parse before execution — likely an unterminated string literal or truncated code; check \\n and quote escaping in multi-line string literals, or non-erasable TypeScript syntax such as enum)'
-      return this.failureBeforeWorker({ kind: 'exception', message: `${raw}${hint}` })
+      return this.failureBeforeWorker({ kind: 'exception', message: `${raw}${stripFrameOf(error)}${hint}` })
     }
 
     return await this.execute(request, code, bindings)

@@ -132,6 +132,17 @@ describe('WorkerThreadCodeRuntime — programs and bindings (real workers)', () 
     expect(result.error?.message).toMatch(/enum|strip/i)
   })
 
+  it('points at the offending program line when the type-strip parse fails', async () => {
+    const { runtime } = await setup()
+    const result = await runtime.run({ program: 'const a = 1\nconst s = "unclosed\nreturn a', bindings: [] })
+    expect(result.error?.kind).toBe('exception')
+    // The V8 code frame, renumbered for the one-line async wrapper the
+    // runtime prepends before stripping — the message alone ("Expected ';',
+    // '}' or <eof>") gives the model nothing to aim at.
+    expect(result.error?.message).toMatch(/program line 2:\n[^\n]*const s = "unclosed/)
+    expect(result.error?.message).not.toContain('__dsh_program__')
+  })
+
   it('reports a runtime throw as an exception with the message', async () => {
     const { runtime } = await setup()
     const result = await runtime.run({ program: 'throw new Error("kaboom")', bindings: [] })
