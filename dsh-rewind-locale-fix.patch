@@ -1,0 +1,12 @@
+diff --git a/lib/client.js b/lib/client.js
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -295,7 +295,7 @@ window.__ModuleLoader__.load({
+             name: "conversation.chat.node",
+             key,
+             priority: -1,
+-            locale: "conversation"
++            locale: "chat"
+           }, makeRewindNodeView(key))
+         ));
+         return () => {

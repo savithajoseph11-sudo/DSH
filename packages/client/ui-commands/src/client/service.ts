@@ -214,7 +214,8 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
       if (seen.has(contribution.name)) {
         throw new Error(`ui-commands: contribution /${contribution.name} collides with a host command`)
       }
-      rows.push({ name: contribution.name, description: contribution.description() })
+      const description: string = typeof contribution.description === 'function' ? contribution.description() : contribution.description
+      rows.push({ name: contribution.name, description })
     }
     return rankByName(
       rows.filter(c => req.position === 'leading' || c.hint === undefined),
